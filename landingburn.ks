@@ -87,15 +87,18 @@ function iterativeburn {
 	parameter iterations.
 	local mass is ship:mass.
 	local acc is 0.
+	local vel is ship:verticalspeed.
+	local baseacc is gravity_calculator() + (abs(vel)^2 * dragcoef / 3).
+	local fuelcoef is getfuelflow() / 400.
 
 	for i in range(iterations) {
-		set acc to ((F/mass) + gravity_calculator() + (abs(v0)^2 * dragcoef / 3)).
-		set burntime to -v0/acc.
-		set avgmass to M - (burntime * getfuelflow() / 200)/2.
-		set mass to avgmass + 0.
+		set acc to (F/mass) + baseacc.
+		set burntime to -vel/acc.
+		set avgmass to M - (burntime * fuelcoef).
+		set mass to avgmass.
 	}
 
-	local h is (v0^2)/(2*a) + offset.
+	local h is (vel^2)/(2*acc) + offset.
 	print h+"/"+alt:radar.
 	return h.
 }
