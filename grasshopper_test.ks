@@ -15,7 +15,7 @@ set sasmode to "radialout".
 
 wait until ship:verticalspeed >= maxvel.
 
-lock throttle to ((ship:mass*9.806)/ship:availablethrust).
+lock throttle to ((ship:mass*9.806)/ship:availablethrust)+0.03.
 
 wait until ship:apoapsis >= targetalt + 100.
 
