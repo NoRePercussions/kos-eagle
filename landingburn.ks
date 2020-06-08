@@ -30,13 +30,14 @@ wait until eta:apoapsis > eta:periapsis.
 ag3 on.
 print "Descent".
 
-when -v0/a <= 4 and addons:tr:timetillimpact <= 4 then { gear on. }
+when addons:tr:timetillimpact <= 4 then { gear on. }
 
 wait until alt:radar <= iterativeburn(15).// - 1*v0/25.// {print iterativeburn(7). wait 0.}
 //print verboseiterativeburn(1) + "/" + h0.
 print "Trying to burn".
 //print avgmass + "/" + mass.
-print getfuelflow().
+//print getfuelflow().
+print v0.
 lock throttle to 1.
 
 
@@ -98,7 +99,8 @@ function iterativeburn {
 		set mass to avgmass.
 	}
 
-	local h is (vel^2)/(2*acc) + offset.
+	// Final alt above ground is linear with velocity, so temp. patched until I can find the culprit
+	local h is (vel^2)/(2*acc) + offset + 0.42 * vel - 34.5. 
 	print h+"/"+alt:radar.
 	return h.
 }
