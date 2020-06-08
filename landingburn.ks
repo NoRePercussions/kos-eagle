@@ -7,7 +7,7 @@ global datalist is lexicon("v", list(), "a", list()).
 
 set offset to 14.38.
 
-set dragcoef to 0.0001389.
+set dragcoef to 0.000152.
 
 lock g to 9.80665. //Update to local gravity later
 lock v0 to ship:verticalspeed.
