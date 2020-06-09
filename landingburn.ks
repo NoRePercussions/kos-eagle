@@ -1,6 +1,6 @@
 // landingburn.ks
 // By tuckyia / NoRePercussions
-// File last updated 8 June 2020
+// File last updated 9 June 2020
 // Goal: Land a booster, SpaceX style, as precisely as possible.
 // This script: Landing retroburn to cancel out vertical velocity at the ground
 // Test script: optimized for experimentation, not production
