@@ -41,13 +41,13 @@ function makelaunchgui {
   set launchlabel:style:hstretch to true.
 
 
-  local altlabel is launchgui:addlabel("Target Orbit Altitude (1 km)").
+  local altlabel is launchgui:addlabel("Target Drop Altitude (1 km)").
 
   set altlabel:style:align to "CENTER".
   
   local alts is launchgui:addhslider(2, 1, 40).
   
-  set alts:onchange to { parameter x. set altlabel:text to "Target Orbit Altitude (" + round(x)/2 + " km)". }.
+  set alts:onchange to { parameter x. set altlabel:text to "Target Drop Altitude (" + round(x)/2 + " km)". }.
   
   
   local launchbutton is launchgui:addbutton("LAUNCH").
