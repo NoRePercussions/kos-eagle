@@ -1,106 +1,105 @@
 // landingburn.ks
-// Burn time v0 * F / M
-// Burn height v0 8 t - M * t^2
-set config:ipu to 2000.
+// By tuckyia / NoRePercussions
+// File last updated 8 June 2020
+// Goal: Land a booster, SpaceX style, as precisely as possible.
+// This script: Landing retroburn to cancel out vertical velocity at the ground
+// Test script: optimized for experimentation, not production
 
-global datalist is lexicon("v", list(), "a", list()).
+wait 10. // Give the pilot (or test program) time to start flying
 
-set offset to 14.38.
-
-set dragcoef to 0.000152.
-
-lock g to 9.80665. //Update to local gravity later
-lock v0 to ship:verticalspeed.
-lock M to ship:mass.
-lock F to ship:availablethrust.
-lock h0 to alt:radar.
-lock a to ((F/M) + gravity_calculator() + (abs(v0)^2 * dragcoef / 3)).
-
-//lock t to v0 * M / F.
-//lock h to (v0 * t) + (g * t / 2) - ((M * t^2) / (2 * F)).
-wait 10.
-
-lock burntime to -v0/a.
-lock fuelconsumption to burntime * getfuelflow().
-lock burntfuelweight to fuelconsumption / 200.
-lock avgmass to M - burntfuelweight/2.
-lock h to (v0^2)/(2*a) + offset.
-
+// Coast until past apoapsis
 wait until eta:apoapsis > eta:periapsis.
 ag3 on.
-print "Descent".
+print "Descent started".
 
-when addons:tr:timetillimpact <= 4 then { gear on. }
+// Pull calculation functions and variables into namespace
+// Yeah, I don't like globals much but locks create functions in kOS. Might change later.
+initconstants().
+initvariables().
+initburnheight().
 
-wait until alt:radar <= iterativeburn(15).// - 1*v0/25.// {print iterativeburn(7). wait 0.}
-//print verboseiterativeburn(1) + "/" + h0.
-print "Trying to burn".
-//print avgmass + "/" + mass.
-//print getfuelflow().
-print v0.
+// Set up a trigger to extend gear beforehand in case burn is shorter than 4 seconds.
+// Runs asynchronously when the condition is triggered
+when addons:tr:timetillimpact <= 4 and -v0/acceleration <= 5 then { gear on. }
+
+
+wait until alt:radar <= heighttoburn and ship:verticalspeed < -1.
+
+print "Landing burn started at " + v0 + " m/s". // Debug: prints velocity at burn start.
 lock throttle to 1.
 
 
 wait until ship:verticalspeed > -1.
-if alt:radar > 15 {
-	print alt:radar-offset.
-	lock throttle to ((M*g)/F) - 0.05.
+if alt:radar > shipheight + 2 { // Make sure ship isn't already on the ground
+	print "Missed target landing height by " + round(alt:radar-shipheight) + " meters". // Debug: prints altitude when velocity hits 0 to find offset from ground
+
+	// Accelerate slowly down until 5 m/s is reached
+	lock throttle to ((-M*gravity_calculator())/F) - 0.05.
 
 
-	wait until ship:verticalspeed <= -5.0 or alt:radar < 16.
-	lock throttle to ((M*g)/F).
+	wait until v0 <= -5.0 or alt:radar < shipheight + 2.
+	lock throttle to ((-M*gravity_calculator())/F). // Does not account for drag atm.
 }.
 
-//print ((M*g)/F).
+wait until alt:radar < shipheight + 3. // Need to account for engines preventing full compression of landing gear
 
-wait until alt:radar < 16.
+// Shutdown sequence
 rcs off.
 sas off.
 unlock throttle.
 
-//writejson(datalist, "aerodrag.json").
 
+
+// Function library
 
 function gravity_calculator {
+	// Solve for local gravity and average over the fall, assuming altitude is quadratic
 	declare local GM to ship:body:mu.
-	declare local R to (body:radius + ship:altitude - alt:radar/3).
+	declare local R to (body:radius + ship:altitude - 2*alt:radar/3).
 	declare local g to GM/(R^2).
 	return -g.
 }.
-
-function recorddata {
-	datalist:v:add(ship:verticalspeed).
-	datalist:a:add(ship:sensors:acc:mag).
-}
 
 function getfuelflow {
 	local fuelflow is 0.
 	list engines in elist.
 	for engine in elist {
 		if engine:ignition {
-			set fuelflow to fuelflow + 64.7438888549805. //engine:fuelflow. need at max thrust, not current
+			set fuelflow to fuelflow + 64.7438888549805. // Accumulate fuel consumption
+			// engine:fuelflow exists but returns values only for current throttle
 		}.
 	}.
 	return fuelflow.
 }
 
-function iterativeburn {
-	parameter iterations.
-	local mass is ship:mass.
-	local acc is 0.
-	local vel is ship:verticalspeed.
-	local baseacc is gravity_calculator() + (abs(vel)^2 * dragcoef / 3).
-	local fuelcoef is getfuelflow() / 400.
+function initconstants {
+	set config:ipu to 2000. // Set processor speed as fast as possible for testing
 
-	for i in range(iterations) {
-		set acc to (F/mass) + baseacc.
-		set burntime to -vel/acc.
-		set avgmass to M - (burntime * fuelcoef).
-		set mass to avgmass.
-	}
+	global shipheight is 14.38. // Hard-coded for now
+	global dragcoef is 0.000152. // Hard-coded, later will try to implement a function to approximate irt.
+}
 
-	// Final alt above ground is linear with velocity, so temp. patched until I can find the culprit
-	local h is (vel^2)/(2*acc) + offset + 0.42 * vel - 34.5. 
-	print h+"/"+alt:radar.
-	return h.
+function initvariables {
+	global lock v0 to ship:verticalspeed. // Instantaneous vertical velocity.
+	global lock M to ship:mass.
+	global lock F to ship:availablethrust.
+	global lock h0 to alt:radar. // Instantaneous height above ground	
+}
+
+function initburnheight {
+	// Find acceleration info that is not a function of mass:
+	// g_c solves for gravitational pull, the second part averages drag
+	// Drag equation assumes that acceleration is linear and uses an average of atm. pressure from 0-1 km
+	global lock accconst to gravity_calculator() + (abs(v0)^2 * dragcoef / 3). // Will update to account for pressure
+	global lock fuelcoef to -1 * v0 * getfuelflow() / (2*200). // One unit of fuel is 5 kg. 200 units is 1 ton. Solving for half of mass in tons
+
+	global lock acceleration to findroot(M, -1*(fuelcoef + F + M*accconst), accconst * fuelcoef).
+	global lock averagemass to M - (fuelcoef / acceleration).
+
+	global lock heighttoburn to (v0^2)/(2*acceleration) + shipheight + 2. // + 0.42 * vel - 34.5. May be able to patch incorrect predictions
+}
+
+function findroot {
+	parameter a, b, c.
+	return (-b + sqrt(b^2-(4*a*c)))/(2*a).
 }
