@@ -90,16 +90,19 @@ function initburnheight {
 	// Find acceleration info that is not a function of mass:
 	// g_c solves for gravitational pull, the second part averages drag
 	// Drag equation assumes that acceleration is linear and uses an average of atm. pressure from 0-1 km
-	global lock accconst to gravity_calculator() + (abs(v0)^2 * dragcoef / 3). // Will update to account for pressure
+	global lock averagethrust to (F + 2 * ship:availablethrustat(1)) / 3.
+
+	global lock drag to (abs(v0)^2 * dragcoef / 3).
+	global lock accconst to gravity_calculator() + drag. // Will update to account for pressure
 	global lock fuelcoef to -1 * v0 * getfuelflow() / (2*200). // One unit of fuel is 5 kg. 200 units is 1 ton. Solving for half of mass in tons
 
-	global lock acceleration to findroot(M, -1*(fuelcoef + F + M*accconst), accconst * fuelcoef).
+	global lock acceleration to findgreatestroot(M, -1*(fuelcoef + averagethrust + M*accconst), accconst * fuelcoef).
 	global lock averagemass to M - (fuelcoef / acceleration).
 
-	global lock heighttoburn to (v0^2)/(2*acceleration) + shipheight + 2. // + 0.42 * vel - 34.5. May be able to patch incorrect predictions
+	global lock heighttoburn to (v0^2)/(2*acceleration) + shipheight + 2.
 }
 
-function findroot {
+function findgreatestroot {
 	parameter a, b, c.
 	return (-b + sqrt(b^2-(4*a*c)))/(2*a).
 }
