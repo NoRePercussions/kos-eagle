@@ -92,9 +92,9 @@ function initburnheight {
 	// Find acceleration info that is not a function of mass:
 	// g_c solves for gravitational pull, the second part averages drag
 	// Drag equation assumes that acceleration is linear and uses an average of atm. pressure from 0-1 km
-	global lock averagethrust to (F + sqrt(F*Fp) + Fp) / 3.
+	global lock averagethrust to (F + 2*Fp) / 3.
 
-	global lock drag to ((p + sqrt(p) + 1) * v0^2 * dragcoef / 9).
+	global lock drag to ((p + 2) * v0^2 * dragcoef / 9).
 	global lock accconst to gravity_calculator() + drag. // Will update to account for pressure
 	global lock fuelcoef to -1 * v0 * getfuelflow() / (2*200). // One unit of fuel is 5 kg. 200 units is 1 ton. Solving for half of mass in tons
 
