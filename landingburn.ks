@@ -55,8 +55,8 @@ unlock throttle.
 function gravity_calculator {
 	// Solve for local gravity and average over the fall, assuming altitude is quadratic
 	declare local GM to ship:body:mu.
-	declare local R to (body:radius + ship:altitude - 2*alt:radar/3).
-	declare local g to GM/(R^2).
+	declare local R to (body:radius + ship:altitude - h0).
+	declare local g to GM/(R * (R+h0)).
 	return -g.
 }.
 
@@ -76,23 +76,25 @@ function initconstants {
 	set config:ipu to 2000. // Set processor speed as fast as possible for testing
 
 	global shipheight is 14.38. // Hard-coded for now
-	global dragcoef is 0.000152. // Hard-coded, later will try to implement a function to approximate irt.
+	global dragcoef is 0.000152. // Hard-coded
 }
 
 function initvariables {
 	global lock v0 to ship:verticalspeed. // Instantaneous vertical velocity.
 	global lock M to ship:mass.
 	global lock F to ship:availablethrust.
-	global lock h0 to alt:radar. // Instantaneous height above ground	
+	global lock Fp to ship:availablethrustat(1).
+	global lock h0 to alt:radar. // Instantaneous height above ground
+	global lock p to ship:sensors:pres/101.325.
 }
 
 function initburnheight {
 	// Find acceleration info that is not a function of mass:
 	// g_c solves for gravitational pull, the second part averages drag
 	// Drag equation assumes that acceleration is linear and uses an average of atm. pressure from 0-1 km
-	global lock averagethrust to (F + 2 * ship:availablethrustat(1)) / 3.
+	global lock averagethrust to (F + sqrt(F*Fp) + Fp) / 3.
 
-	global lock drag to (abs(v0)^2 * dragcoef / 3).
+	global lock drag to ((p + sqrt(p) + 1) * v0^2 * dragcoef / 9).
 	global lock accconst to gravity_calculator() + drag. // Will update to account for pressure
 	global lock fuelcoef to -1 * v0 * getfuelflow() / (2*200). // One unit of fuel is 5 kg. 200 units is 1 ton. Solving for half of mass in tons
 
