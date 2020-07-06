@@ -20,16 +20,18 @@ initburnheight().
 
 // Set up a trigger to extend gear beforehand in case burn is shorter than 4 seconds.
 // Runs asynchronously when the condition is triggered
-when addons:tr:timetillimpact <= 4 and -v0/acceleration <= 5 then { gear on. }
+when -v0/acceleration <= 5 and alt:radar < 300 then { gear on. } //addons:tr:timetillimpact <= 4 and 
 
 
 wait until alt:radar <= heighttoburn and ship:verticalspeed < -1.
+set timer to time:seconds.
 
 print "Landing burn started at " + v0 + " m/s". // Debug: prints velocity at burn start.
-lock throttle to 1.
+lock throttle to heighttoburn / alt:radar.
 
 
 wait until ship:verticalspeed > -1.
+print "Burn time: " + (time:seconds - timer) + " seconds".
 if alt:radar > shipheight + 2 { // Make sure ship isn't already on the ground
 	print "Missed target landing height by " + round(alt:radar-shipheight) + " meters". // Debug: prints altitude when velocity hits 0 to find offset from ground
 
@@ -101,7 +103,7 @@ function initburnheight {
 	global lock acceleration to findgreatestroot(M, -1*(fuelcoef + averagethrust + M*accconst), accconst * fuelcoef).
 	global lock averagemass to M - (fuelcoef / acceleration).
 
-	global lock heighttoburn to (v0^2)/(2*acceleration) + shipheight + 2.
+	global lock heighttoburn to (v0^2)/(2*acceleration) + shipheight.
 }
 
 function findgreatestroot {
