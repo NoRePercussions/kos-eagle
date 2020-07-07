@@ -17,6 +17,10 @@ print "Descent started".
 initconstants().
 initvariables().
 initburnheight().
+initburnangle().
+
+sas off.
+lock steering to heading(90, 90 - burnangle*1.4).
 
 // Set up a trigger to extend gear beforehand in case burn is shorter than 4 seconds.
 // Runs asynchronously when the condition is triggered
@@ -26,13 +30,17 @@ when -v0/acceleration <= 5 and alt:radar < 300 then { gear on. } //addons:tr:tim
 wait until alt:radar <= heighttoburn and ship:verticalspeed < -1.
 set timer to time:seconds.
 
+print burnangle.
+print acceleration.
+print vaccel.
+print hvel.
 print "Landing burn started at " + v0 + " m/s". // Debug: prints velocity at burn start.
 lock throttle to heighttoburn / alt:radar.
 
 
 wait until ship:verticalspeed > -1.
 print "Burn time: " + (time:seconds - timer) + " seconds".
-if alt:radar > shipheight + 2 { // Make sure ship isn't already on the ground
+if alt:radar > shipmaxheight + 1 { // Make sure ship isn't already on the ground
 	print "Missed target landing height by " + round(alt:radar-shipheight) + " meters". // Debug: prints altitude when velocity hits 0 to find offset from ground
 
 	// Accelerate slowly down until 5 m/s is reached
@@ -43,7 +51,7 @@ if alt:radar > shipheight + 2 { // Make sure ship isn't already on the ground
 	lock throttle to ((-M*gravity_calculator())/F). // Does not account for drag atm.
 }.
 
-wait until alt:radar < shipheight + 3. // Need to account for engines preventing full compression of landing gear
+wait until alt:radar < shipmaxheight + 0.5. // Need to account for engines preventing full compression of landing gear
 
 // Shutdown sequence
 rcs off.
@@ -78,11 +86,13 @@ function initconstants {
 	set config:ipu to 2000. // Set processor speed as fast as possible for testing
 
 	global shipheight is 14.38. // Hard-coded for now
+	global shipmaxheight is 18.78. // When at top of gear
 	global dragcoef is 0.000152. // Hard-coded
 }
 
 function initvariables {
 	global lock v0 to ship:verticalspeed. // Instantaneous vertical velocity.
+	global lock hvel to ship:groundspeed. // Instantaneous vertical velocity.
 	global lock M to ship:mass.
 	global lock F to ship:availablethrust.
 	global lock Fp to ship:availablethrustat(1).
@@ -97,16 +107,27 @@ function initburnheight {
 	global lock averagethrust to (F + 2*Fp) / 3.
 
 	global lock drag to ((p + 2) * v0^2 * dragcoef / 9).
-	global lock accconst to gravity_calculator() + drag. // Will update to account for pressure
+	global lock accconst to drag. // Will update to account for pressure. no longer takes grav.
 	global lock fuelcoef to -1 * v0 * getfuelflow() / (2*200). // One unit of fuel is 5 kg. 200 units is 1 ton. Solving for half of mass in tons
 
 	global lock acceleration to findgreatestroot(M, -1*(fuelcoef + averagethrust + M*accconst), accconst * fuelcoef).
 	global lock averagemass to M - (fuelcoef / acceleration).
+}
 
-	global lock heighttoburn to (v0^2)/(2*acceleration) + shipheight.
+function initburnangle {
+	global lock burnangle to (arccos(-(hvel * gravity_calculator()) / (acceleration * pyth(-v0, hvel)))
+	    - arctan(-v0/hvel)).
+	global lock vaccel to acceleration*cos(burnangle/1.4) + gravity_calculator().
+
+	global lock heighttoburn to (v0^2)/(2*vaccel) + shipheight + 4.
 }
 
 function findgreatestroot {
 	parameter a, b, c.
 	return (-b + sqrt(b^2-(4*a*c)))/(2*a).
+}
+
+function pyth {
+	parameter x, y.
+	return sqrt(x^2 + y^2).
 }
