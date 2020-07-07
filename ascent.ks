@@ -25,7 +25,11 @@ unlock steering.
 sas on. wait 0.04. set sasmode to "PROGRADE".
 
 wait until ship:apoapsis > 40_000.
+lock throttle to 0. unlock throttle. sas off.
+set SHIP:CONTROL:PILOTMAINTHROTTLE to 0.
 stage.
+sas on. wait 0.04. set sasmode to "PROGRADE".
+lock throttle to 2*((ship:mass*9.81)/ship:availablethrust).
 
 //core
 wait until ship:apoapsis > targetperi*1000.
