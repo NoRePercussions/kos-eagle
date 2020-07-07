@@ -21,7 +21,7 @@ local hvel is ship:groundspeed.
 lock throttle to 1.0.
 
 wait until ship:groundspeed <= 5.
-wait until ship:groundspeed >= hvel - 100.
+wait until ship:groundspeed >= hvel - 150.
 
 unlock throttle.
 unlock steering.
