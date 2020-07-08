@@ -17,13 +17,15 @@ function executemaneuver {
 
 	if currentdv() < dv { print "Needs to stage". }.
 
-	local acceleration is ship:availablethrust / (ship:mass*2 - (stage:liquidfuel + stage:oxidizer)/200).
+	local acceleration is ship:availablethrust / (ship:mass - (stage:liquidfuel + stage:oxidizer)/(2*200)).
 	local burntime is dv / acceleration.
 
-	if node:eta < burntime/2 { print "Burn should have already occured!". }.
+	if node:eta < burntime/2 { print "Burn should have already occured!". }
+	else { wait 1. kuniverse:timewarp:warpto(time:seconds + node:eta - burntime/2 - 30). }
 
 	wait until node:eta - burntime/2 <= 30.
 	set rcs to rcsstate. sas on. wait 0. set sasmode to "MANEUVER".
+
 
 	wait until node:eta - burntime/2 <= 0.
 
@@ -40,6 +42,7 @@ function executemaneuver {
 	wait until dv <= 0.1.
 
 	lock throttle to 0.
+	remove node.
 }
 
 function currentdv { // zero-indexed
@@ -59,4 +62,4 @@ function currentdv { // zero-indexed
 
 }
 
-executemaneuver(nextnode, false, true).
+//executemaneuver(nextnode, false, true).
